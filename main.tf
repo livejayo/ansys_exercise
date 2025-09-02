@@ -8,7 +8,7 @@ terraform {
 }
 
 provider "aws" {
-  region = "us-east-1"
+  region = var.aws_region
 }
 
 data "aws_availability_zones" "available" {
@@ -26,7 +26,7 @@ data "aws_ami" "amazon_linux" {
 }
 
 resource "aws_vpc" "my_vpc" {
-  cidr_block = "10.0.0.0/16"
+  cidr_block = var.my_vpc_cidr
 
   tags = {
     Name = "my-test-vpc"
@@ -55,13 +55,13 @@ resource "aws_route_table" "public_rt" {
 }
 
 resource "aws_route_table_association" "public_assoc" {
-  count          = 3
+  count          = var.subnet_count
   subnet_id      = aws_subnet.public_subnets[count.index].id
   route_table_id = aws_route_table.public_rt.id
 }
 
 resource "aws_subnet" "public_subnets" {
-  count                   = 3
+  count                   = var.subnet_count
   vpc_id                  = aws_vpc.my_vpc.id
   cidr_block              = cidrsubnet(aws_vpc.my_vpc.cidr_block, 8, count.index)
   availability_zone       = data.aws_availability_zones.available.names[count.index]
@@ -73,9 +73,9 @@ resource "aws_subnet" "public_subnets" {
 }
 
 resource "aws_subnet" "private_subnets" {
-  count             = 3
+  count             = var.subnet_count
   vpc_id            = aws_vpc.my_vpc.id
-  cidr_block        = cidrsubnet(aws_vpc.my_vpc.cidr_block, 8, count.index + 3)
+  cidr_block        = cidrsubnet(aws_vpc.my_vpc.cidr_block, 8, count.index + var.subnet_count)
   availability_zone = data.aws_availability_zones.available.names[count.index]
 
   tags = {
@@ -110,7 +110,7 @@ resource "aws_security_group" "web_sg" {
 
 resource "aws_instance" "web_server" {
   ami           = data.aws_ami.amazon_linux.id
-  instance_type = "t2.micro"
+  instance_type = var.box_type
   subnet_id     = aws_subnet.public_subnets[0].id
   vpc_security_group_ids = [aws_security_group.web_sg.id]
 
